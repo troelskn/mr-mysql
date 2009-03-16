@@ -7,7 +7,7 @@
 
 (require "../mysql.ss")
 
-(define connection-tests
+(define mr-mysql-tests
   (test-suite
    "Tests for mr-mysql connection"
    ;; connect
@@ -26,10 +26,22 @@
               (lambda ()
                 (mysql-connect #:hostname "localhost" #:username "root" #:database "no-such-database"))
               "Raise error on wrong database")
+   (let
+       ((connection (mysql-connect #:hostname "localhost" #:username "root" #:database "test")))
+     (check-equal? (mysql-escape-string "foobar" connection) "foobar" "Normal strings pass unaffected")
+     (mysql-disconnect connection))
+   (let
+       ((connection (mysql-connect #:hostname "localhost" #:username "root" #:database "test")))
+     (check-equal? (mysql-escape-string "foo'bar" connection) "foo\\'bar" "Single quotes gets escaped")
+     (mysql-disconnect connection))
+   (let
+       ((connection (mysql-connect #:hostname "localhost" #:username "root" #:database "test")))
+     (check-equal? (mysql-escape-string "blåbærgrød" connection) "blåbærgrød" "high-bytes passes through unaffected")
+     (mysql-disconnect connection))
    ))
 
 ;; autorun
 (exit (when (equal?
              (normalize-path (find-system-path 'run-file))
              (normalize-path (this-expression-file-name)))
-        (run-tests connection-tests)))
+        (run-tests mr-mysql-tests)))

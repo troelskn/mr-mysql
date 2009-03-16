@@ -11,7 +11,8 @@
 
 (require "helpers.ss"
          "libmysqlclient.ss"
-         (lib "list.ss")
+         rnrs/bytevectors-6
+         scheme/list
          (lib "setf.ss" "swindle")
          (lib "foreign.ss"))
 
@@ -113,8 +114,10 @@
                "There aren't any current conections. You need to connect before running a query.")))
    ((= (length args) 1)                                ; A handler is being specified.
     (if (mysql? (first args))                          ; Is the second argument a MySQL handler ?
-        (let ((handler (first args)))                  ; Yes, proceed.
-          (if (= (raw-mysql-query handler query) 0)    ; Run the query and check if it returns 0 (success).
+        (let (                                         ; Yes, proceed.
+              (handler (first args))
+              (bytes (string->utf8 query)))
+          (if (= (raw-mysql-real-query handler bytes (bytevector-length bytes)) 0)    ; Run the query and check if it returns 0 (success).
               (when (> (raw-mysql-field-count handler) ; Is there anything returned ?
                        0)
                 (mysql-result->list-of-alists          ; Turn it into a list of alists
@@ -127,6 +130,34 @@
                "A MySQL handler expected as first argument.")))
    (else
     (error 'mysql-query
+           "One (a string) or two (a string and a MySQL handler) arguments where expected, ~s given"
+           (length args)))))
+
+(define (u8vector->string/utf-8 vector length)
+  (bytes->string/utf-8
+   (list->bytes (take (u8vector->list vector) length))))
+
+(define/provide (mysql-escape-string input-string . args)
+  (unless (string? input-string) ; If input is not a string, error!
+    (error 'mysql-escape-string "A string was expected as first parameter."))
+  (cond
+   ((= (length args) 0)                              ; A handler is NOT being specified.
+    (if (handlers-left?)                             ; Do we have any handlers left ?
+        (mysql-escape-string input-string (current-handler)) ; Yes, use it!
+        (error 'mysql-escape-string                          ; No, error!
+               "There aren't any current conections. You need to connect before escaping strings.")))
+   ((= (length args) 1)                                ; A handler is being specified.
+    (if (mysql? (first args))                          ; Is the second argument a MySQL handler ?
+        (let* (                                        ; Yes, proceed.
+              (handler (first args))
+              (input-bytes (string->utf8 input-string))
+              (output-vector (make-u8vector (+ 1 (* 2 (bytevector-length input-bytes)))))
+              (size-of-output (raw-mysql-real-escape-string handler output-vector input-bytes (bytevector-length input-bytes))))
+          (u8vector->string/utf-8 output-vector size-of-output))
+        (error 'mysql-escape-string                    ; The second argument is not a handler.
+               "A MySQL handler expected as first argument.")))
+   (else
+    (error 'mysql-escape-string
            "One (a string) or two (a string and a MySQL handler) arguments where expected, ~s given"
            (length args)))))
 

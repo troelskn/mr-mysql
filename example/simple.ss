@@ -41,6 +41,10 @@
 (printf "selecting ...~%")
 (define foo (mysql-query "SELECT * FROM `accounts`"))
 
+(printf "escape string ...~%")
+(print (mysql-escape-string "foobar"))
+(printf "~%")
+
 (printf "disconnecting ...~%")
 (mysql-disconnect)
 

@@ -283,8 +283,13 @@
 
 ;; http://dev.mysql.com/doc/mysql/en/mysql-query.html
 ;; int mysql_query(MYSQL *mysql, const char *query)
-(define/provide raw-mysql-query
-  (get-ffi-obj "mysql_query" libmysqlclient (_fun _mysql _string -> _int)))
+; (define/provide raw-mysql-query
+;   (get-ffi-obj "mysql_query" libmysqlclient (_fun _mysql _string -> _int)))
+
+;; http://dev.mysql.com/doc/refman/5.1/en/mysql-real-query.html
+;; int mysql_real_query(MYSQL *mysql, const char *stmt_str, unsigned long length)
+(define/provide raw-mysql-real-query
+  (get-ffi-obj "mysql_real_query" libmysqlclient (_fun _mysql _string _ulong -> _int)))
 
 ;; http://dev.mysql.com/doc/mysql/en/mysql-real-connect.html
 ;; MYSQL *mysql_real_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd, const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag)
@@ -293,10 +298,11 @@
                (_fun _mysql _string _string _string
                      _string _uint _string _ulong -> _mysql)))
 
-;  (define raw-mysql-real-escape-string
-;    (get-ffi-obj "mysql_real_escape_string" libmysqlclient (_fun _mysql _string _string _ulong -> _ulong)))
-;  (define raw-mysql-real-query
-;    (get-ffi-obj "mysql_real_query" libmysqlclient (_fun _mysql _string _ulong -> _int)))
+;; http://dev.mysql.com/doc/refman/5.1/en/mysql-real-escape-string.html
+;; unsigned long mysql_real_escape_string(MYSQL *mysql, char *to, const char *from, unsigned long length)
+(define/provide raw-mysql-real-escape-string
+  (get-ffi-obj "mysql_real_escape_string" libmysqlclient (_fun _mysql _pointer _string _ulong -> _ulong)))
+
 ;  (define raw-mysql-refresh
 ;    (get-ffi-obj "mysql_refresh" libmysqlclient (_fun _mysql _uint -> _int)))
 ;  (define raw-mysql-reload
