@@ -232,8 +232,8 @@
 ;    (get-ffi-obj "mysql_get_character_set_info" libmysqlclient (_fun _mysql -> )))
 ;  (define raw-mysql-get-client-info
 ;    (get-ffi-obj "mysql_get_client_info" libmysqlclient (_fun -> _string)))
-;  (define raw-mysql-get-client-version
-;    (get-ffi-obj "mysql_get_client_version" libmysqlclient (_fun -> _ulong)))
+(define/provide raw-mysql-get-client-version
+  (get-ffi-obj "mysql_get_client_version" libmysqlclient (_fun -> _ulong)))
 ;  (define raw-mysql-get-host-info
 ;    (get-ffi-obj "mysql_get_host_info" libmysqlclient (_fun _mysql -> _string)))
 ;  (define raw-mysql-get-proto-info

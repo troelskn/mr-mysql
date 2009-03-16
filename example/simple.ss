@@ -15,6 +15,8 @@
 #lang scheme/base
 (require "../mysql.ss")
 
+(printf "mysql-client-version: ~s ~%" (mysql-client-version))
+
 (printf "connecting ...~%")
 
 (define connection (mysql-connect #:hostname "localhost" #:username "root" #:database "test"))

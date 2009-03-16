@@ -40,6 +40,11 @@
       (pop! handlers)  ; If so, pop one.
       null))           ; Otherwise, nevermind.
 
+;; Returns an integer that represents the client library version.
+;; http://dev.mysql.com/doc/refman/5.1/en/mysql-get-client-version.html
+(define/provide (mysql-client-version)
+  (raw-mysql-get-client-version))
+
 ;; Connect to a MySQL server.
 ;; Parameters:
 ;;   #:hostname  hostname to connect to, null or nothing for localhost.
