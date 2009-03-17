@@ -175,8 +175,11 @@
 
 (define _mysql-bind-vector _cvector)
 
-(define/provide (make-mysql-bindings length)
+(define/provide (make-mysql-bind-vector length)
   (make-cvector _mysql-bind length))
+
+(define/provide (mysql-bind-vector->list mysql-bind-vector)
+  (map mysql-bind-buffer (cvector->list mysql-bind-vector)))
 
 ;; clearly, i have *no* idea what i'm doing here ..
 ;; typedef struct st_mysql_bind
@@ -429,12 +432,16 @@
 (define/provide raw-mysql-stmt-fetch
   (get-ffi-obj "mysql_stmt_fetch" libmysqlclient (_fun _mysql-stmt -> _int)))
 
-
 ;; int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind_arg,
 ;;                                     unsigned int column,
 ;;                                     unsigned long offset);
 ;; int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt);
+
+;; Returns the number of parameter markers present in the prepared statement.
 ;; unsigned long STDCALL mysql_stmt_param_count(MYSQL_STMT * stmt);
+(define/provide raw-mysql-stmt-param-count
+  (get-ffi-obj "mysql_stmt_param_count" libmysqlclient (_fun _mysql-stmt -> _ulong)))
+
 ;; my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt,
 ;;                                     enum enum_stmt_attr_type attr_type,
 ;;                                     const void *attr);

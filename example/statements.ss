@@ -45,27 +45,26 @@
 (define stmt (raw-mysql-stmt-init connection))
 
 (printf "raw-mysql-stmt-prepare ...~%")
-(when (not (= 0 (raw-mysql-stmt-prepare stmt "select * from accounts" 22)))
+(when (not (= 0 (raw-mysql-stmt-prepare stmt "select id, username, password from accounts" 43)))
   (raise "raw-mysql-stmt-prepare failed"))
 
-(printf "raw-mysql-stmt-execute ...~%")
-(when (not (= 0 (raw-mysql-stmt-execute stmt)))
-  (raise "raw-mysql-stmt-execute failed"))
-
-(printf "Creating bindings ...~%")
+(printf "creating bindings ...~%")
 (define bindings
-  (make-mysql-bindings 3))
+  (make-mysql-bind-vector 3)) ;; hard-coded for now .. can be fetched through meta_result
 
 (printf "raw-mysql-stmt-bind-result ...~%")
 (when (not (raw-mysql-stmt-bind-result stmt bindings))
   (raise "raw-mysql-stmt-bind-result failed"))
 
+(printf "raw-mysql-stmt-execute ...~%")
+(when (not (= 0 (raw-mysql-stmt-execute stmt)))
+  (raise "raw-mysql-stmt-execute failed"))
+
 (printf "raw-mysql-stmt-fetch ...~%")
 (when (not (= 0 (raw-mysql-stmt-fetch stmt)))
   (raise "raw-mysql-stmt-fetch failed"))
 
-
-
+(print (mysql-bind-vector->list bindings))
 
 (printf "disconnecting ...~%")
 (mysql-disconnect)
