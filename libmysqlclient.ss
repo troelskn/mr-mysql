@@ -173,8 +173,10 @@
                             kill-query = 254
                             kill-connection = 255)))
 
-(define _mysql-bind-vector
-  (_cpointer/null 'mysql-bind-vector (make-ctype _pointer #f #f)))
+(define _mysql-bind-vector _cvector)
+
+(define/provide (make-mysql-bindings length)
+  (make-cvector _mysql-bind length))
 
 ;; clearly, i have *no* idea what i'm doing here ..
 ;; typedef struct st_mysql_bind
@@ -422,7 +424,12 @@
 (define/provide raw-mysql-stmt-execute
   (get-ffi-obj "mysql_stmt_execute" libmysqlclient (_fun _mysql-stmt -> _int)))
 
+;; mysql_stmt_fetch() returns the next row in the result set. It can be called only while the result set exists; that is, after a call to mysql_stmt_execute() for a statement such as SELECT that creates a result set.
 ;; int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt);
+(define/provide raw-mysql-stmt-fetch
+  (get-ffi-obj "mysql_stmt_fetch" libmysqlclient (_fun _mysql-stmt -> _int)))
+
+
 ;; int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind_arg,
 ;;                                     unsigned int column,
 ;;                                     unsigned long offset);
