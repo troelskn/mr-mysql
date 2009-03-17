@@ -36,6 +36,13 @@
   (lambda (m)
     (cpointer-has-tag? m 'mysql-result)))
 
+;; MYSQL_STMT
+(define _mysql-stmt (_cpointer/null 'mysql-stmt (make-ctype _pointer #f #f)))
+
+(define/provide mysql-stmt?
+  (lambda (m)
+    (cpointer-has-tag? m 'mysql-stmt)))
+
 ;; MySQL row representation.
 (define _mysql-row (_cpointer/null 'mysql-row (make-ctype _pointer #f #f)))
 
@@ -165,6 +172,55 @@
                             shutdown-wait-critical-buffers = 17 ;(mysql-shutdown-killable-update << 1)+1
                             kill-query = 254
                             kill-connection = 255)))
+
+(define _mysql-bind-vector
+  (_cpointer/null 'mysql-bind-vector (make-ctype _pointer #f #f)))
+
+;; clearly, i have *no* idea what i'm doing here ..
+;; typedef struct st_mysql_bind
+;; {
+;;   unsigned long	*length;          /* output length pointer */
+;;   my_bool       *is_null;	  /* Pointer to null indicator */
+;;   void		*buffer;	  /* buffer to get/put data */
+;;   /* set this if you want to track data truncations happened during fetch */
+;;   my_bool       *error;
+;;   enum enum_field_types buffer_type;	/* buffer type */
+;;   /* output buffer length, must be set when fetching str/binary */
+;;   unsigned long buffer_length;
+;;   unsigned char *row_ptr;         /* for the current data position */
+;;   unsigned long offset;           /* offset position for char/binary fetch */
+;;   unsigned long	length_value;     /* Used if length is 0 */
+;;   unsigned int	param_number;	  /* For null count and error messages */
+;;   unsigned int  pack_length;	  /* Internal length for packed data */
+;;   my_bool       error_value;      /* used if error is 0 */
+;;   my_bool       is_unsigned;      /* set if integer type is unsigned */
+;;   my_bool	long_data_used;	  /* If used with mysql_send_long_data */
+;;   my_bool	is_null_value;    /* Used if is_null is 0 */
+;;   void (*store_param_func)(NET *net, struct st_mysql_bind *param);
+;;   void (*fetch_result)(struct st_mysql_bind *, MYSQL_FIELD *,
+;;                        unsigned char **row);
+;;   void (*skip_result)(struct st_mysql_bind *, MYSQL_FIELD *,
+;; 		      unsigned char **row);
+;; } MYSQL_BIND;
+(define-cstruct _mysql-bind
+  ((length (_ptr o _ulong))
+   (is_null (_ptr o _my-bool))
+   (buffer _pointer)
+   (error (_ptr o _my-bool))
+   (field-types _field-types)
+   (buffer-length _ulong)
+   (row-ptr _string)
+   (offset _ulong)
+   (length-value _ulong)
+   (param-number _uint)
+   (pack-length _uint)
+   (error-value _my-bool)
+   (is-unsigned _my-bool)
+   (long-data-used _my-bool)
+   (is-null-value _my-bool)
+   (store-param-func _pointer)
+   (fetch-result _pointer)
+   (skip-result _pointer)))
 
 (define raw-mysql-affected-rows
   (get-ffi-obj "mysql_affected_rows" libmysqlclient (_fun _mysql -> _my-ulongulong)))
@@ -347,3 +403,80 @@
 ;    (get-ffi-obj "mysql_more_results" libmysqlclient (_fun _mysql -> _my-bool)))
 ;  (define raw-mysql-next-result
 ;    (get-ffi-obj "mysql_next_result" libmysqlclient (_fun _mysql -> _int)))
+
+;;; MySql stmt related functions
+
+;; Create a MYSQL_STMT handle. The handle should be freed with mysql_stmt_close(MYSQL_STMT *).
+;; MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql);
+(define/provide raw-mysql-stmt-init
+  (get-ffi-obj "mysql_stmt_init" libmysqlclient (_fun _mysql -> _mysql-stmt)))
+
+;; Given the statement handle returned by mysql_stmt_init(), prepares the SQL statement pointed to by the string stmt_str and returns a status value. The string length should be given by the length  argument.
+;; int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query,
+;;                                unsigned long length);
+(define/provide raw-mysql-stmt-prepare
+  (get-ffi-obj "mysql_stmt_prepare" libmysqlclient (_fun _mysql-stmt _string _ulong -> _int)))
+
+;; Executes the prepared query associated with the statement handle. The currently bound parameter marker values are sent to server during this call, and the server replaces the markers with this newly supplied data.
+;; int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt);
+(define/provide raw-mysql-stmt-execute
+  (get-ffi-obj "mysql_stmt_execute" libmysqlclient (_fun _mysql-stmt -> _int)))
+
+;; int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt);
+;; int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind_arg,
+;;                                     unsigned int column,
+;;                                     unsigned long offset);
+;; int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt);
+;; unsigned long STDCALL mysql_stmt_param_count(MYSQL_STMT * stmt);
+;; my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt,
+;;                                     enum enum_stmt_attr_type attr_type,
+;;                                     const void *attr);
+;; my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt,
+;;                                     enum enum_stmt_attr_type attr_type,
+;;                                     void *attr);
+
+;; mysql_stmt_bind_param() is used to bind input data for the parameter markers in the SQL statement that was passed to mysql_stmt_prepare(). It uses MYSQL_BIND structures to supply the data. bind is the address of an array of MYSQL_BIND structures. The client library expects the array to contain one element for each “?” parameter marker that is present in the query.
+;; my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT * stmt, MYSQL_BIND * bnd);
+(define/provide raw-mysql-stmt-bind-param
+  (get-ffi-obj "mysql_stmt_bind_param" libmysqlclient (_fun _mysql-stmt _mysql-bind-vector -> _my-bool)))
+
+;; mysql_stmt_bind_result() is used to associate (that is, bind) output columns in the result set to data buffers and length buffers. When mysql_stmt_fetch() is called to fetch data, the MySQL client/server protocol places the data for the bound columns into the specified buffers.
+;; my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT * stmt, MYSQL_BIND * bnd);
+(define/provide raw-mysql-stmt-bind-result
+  (get-ffi-obj "mysql_stmt_bind_result" libmysqlclient (_fun _mysql-stmt _mysql-bind-vector -> _my-bool)))
+
+;; Closes the prepared statement. mysql_stmt_close() also deallocates the statement handle pointed to by stmt.
+;; If the current statement has pending or unread results, this function cancels them so that the next query can be executed.
+;; my_bool STDCALL mysql_stmt_close(MYSQL_STMT * stmt);
+(define/provide raw-mysql-stmt-close
+  (get-ffi-obj "mysql_stmt_close" libmysqlclient (_fun _mysql-stmt -> _my-bool)))
+
+;; my_bool STDCALL mysql_stmt_reset(MYSQL_STMT * stmt);
+;; my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt);
+;; my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt,
+;;                                           unsigned int param_number,
+;;                                           const char *data,
+;;                                           unsigned long length);
+;; MYSQL_RES *STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt);
+;; MYSQL_RES *STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt);
+
+;; unsigned int STDCALL mysql_stmt_errno(MYSQL_STMT * stmt);
+(define/provide raw-mysql-stmt-errno
+  (get-ffi-obj "mysql_stmt_errno" libmysqlclient (_fun _mysql-stmt -> _uint)))
+
+;; const char *STDCALL mysql_stmt_error(MYSQL_STMT * stmt);
+(define/provide raw-mysql-stmt-error
+  (get-ffi-obj "mysql_stmt_error" libmysqlclient (_fun _mysql-stmt -> _string)))
+
+;; const char *STDCALL mysql_stmt_sqlstate(MYSQL_STMT * stmt);
+(define/provide raw-mysql-stmt-sqlstate
+  (get-ffi-obj "mysql_stmt_sqlstate" libmysqlclient (_fun _mysql-stmt -> _string)))
+
+;; MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_seek(MYSQL_STMT *stmt,
+;;                                              MYSQL_ROW_OFFSET offset);
+;; MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_tell(MYSQL_STMT *stmt);
+;; void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, my_ulonglong offset);
+;; my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt);
+;; my_ulonglong STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt);
+;; my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
+;; unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt);
