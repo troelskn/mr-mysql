@@ -61,7 +61,7 @@
            mysql-type-time
            mysql-type-datetime
            mysql-type-year
-           mysql-type-newdate
+           mysql-type-newdate = 246
            mysql-type-enum = 247
            mysql-type-set = 248
            mysql-type-tiny-blob = 249
@@ -173,14 +173,6 @@
                             kill-query = 254
                             kill-connection = 255)))
 
-(define _mysql-bind-vector _cvector)
-
-(define/provide (make-mysql-bind-vector length)
-  (make-cvector _mysql-bind length))
-
-(define/provide (mysql-bind-vector->list mysql-bind-vector)
-  (map mysql-bind-buffer (cvector->list mysql-bind-vector)))
-
 ;; clearly, i have *no* idea what i'm doing here ..
 ;; typedef struct st_mysql_bind
 ;; {
@@ -209,10 +201,10 @@
 ;; } MYSQL_BIND;
 (define-cstruct _mysql-bind
   ((length (_ptr o _ulong))
-   (is_null (_ptr o _my-bool))
+   (is-null (_ptr o _my-bool))
    (buffer _pointer)
    (error (_ptr o _my-bool))
-   (field-types _field-types)
+   (buffer-type _field-types)
    (buffer-length _ulong)
    (row-ptr _string)
    (offset _ulong)
@@ -226,6 +218,39 @@
    (store-param-func _pointer)
    (fetch-result _pointer)
    (skip-result _pointer)))
+
+(define _mysql-bind-vector _cvector)
+
+(define/provide (make-mysql-bind-vector length)
+  (make-cvector _mysql-bind length))
+
+(define/provide (make-mysql-bind-vector-of-string length)
+  (list->cvector
+   (build-list length (lambda (i) (init-mysql-bind (make-mysql-bind))))
+   _mysql-bind))
+
+(define/provide (init-mysql-bind binding)
+  (let ((buffer (malloc	1024))
+        (str-length (malloc	_ulong)))
+    ;; bind[1].buffer_type= MYSQL_TYPE_STRING;
+    (set-mysql-bind-buffer-type! binding 254)
+    ;; bind[1].buffer= (char *)str_data;
+    (set-mysql-bind-buffer! binding buffer)
+    ;; bind[1].buffer_length= STRING_SIZE;
+    (set-mysql-bind-buffer-length! binding 1024)
+    ;; bind[1].is_null= 0;
+    (set-mysql-bind-is-null! binding #f)
+    ;; bind[1].length= &str_length;
+    (set-mysql-bind-length! binding str-length)
+    ;; free memory
+    (register-finalizer binding
+                        (lambda ()
+                          (free buffer)
+                          (free str-length)))
+    binding))
+
+(define/provide (mysql-bind-vector->list mysql-bind-vector)
+  (map mysql-bind-buffer (cvector->list mysql-bind-vector)))
 
 (define raw-mysql-affected-rows
   (get-ffi-obj "mysql_affected_rows" libmysqlclient (_fun _mysql -> _my-ulongulong)))

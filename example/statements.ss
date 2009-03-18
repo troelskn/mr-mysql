@@ -50,7 +50,7 @@
 
 (printf "creating bindings ...~%")
 (define bindings
-  (make-mysql-bind-vector 3)) ;; hard-coded for now .. can be fetched through meta_result
+  (make-mysql-bind-vector-of-string 3)) ;; hard-coded for now .. can be fetched through meta_result
 
 (printf "raw-mysql-stmt-bind-result ...~%")
 (when (not (raw-mysql-stmt-bind-result stmt bindings))
